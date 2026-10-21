@@ -111,13 +111,16 @@ internal class TypedParameters {
 
 /**
  * Decodes a JavaScript value representing a SQLite result to Kotlin.
+ *
+ * [TypeCodes.INTEGER] values can be anything up to 2^53, so they are read through a double rather
+ * than an int.
  */
 internal fun decodeTyped(
     source: JsAny?,
     typeCode: Byte,
 ): Any? =
     when (typeCode) {
-        TypeCodes.INTEGER -> source!!.unsafeCast<JsNumber>().toInt().toLong()
+        TypeCodes.INTEGER -> source!!.unsafeCast<JsNumber>().toDouble().toLong()
         TypeCodes.BIG_INTEGER -> source!!.bigIntToLong()
         TypeCodes.FLOAT -> source!!.unsafeCast<JsNumber>().toDouble()
         TypeCodes.TEXT -> source!!.unsafeCast<JsString>().toString()
