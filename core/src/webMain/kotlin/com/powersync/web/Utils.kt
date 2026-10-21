@@ -20,8 +20,7 @@ import kotlin.js.unsafeCast
 /**
  * On Kotlin/JS, [Long.toJsBigInt] doesn't actually return a JavaScript big int.
  *
- * This attempts to convert the long value into an exact JS big int representation, or fails if
- * that's impossible.
+ * This converts the long value into an exact JS big int representation.
  */
 internal expect fun Long.toBigInt(): JsAny
 

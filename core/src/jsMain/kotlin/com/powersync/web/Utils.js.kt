@@ -4,14 +4,13 @@ package com.powersync.web
 
 import com.powersync.internal.InternalPowerSyncAPI
 
-internal actual fun Long.toBigInt(): JsAny =
-    throw UnsupportedOperationException("Binding long values larger than 32 bits is not supported on Kotlin/JS.")
+internal actual fun Long.toBigInt(): JsAny = composeBigInt((this shr 32).toInt().toJsNumber(), toInt().toJsNumber(), i32BigInt)
 
 internal actual fun JsAny.bigIntToLong(): Long {
     // We can't represent big integers in Kotlin directly, extract high and low i32 values to
     // compose the long value.
-    val high = bigIntLowBits(bigIntShiftRight(this, i32BigInt)).toLong()
-    val low = bigIntLowBits(this).toLong()
+    val high = bigIntInt32(bigIntShiftRight(this, i32BigInt)).toLong()
+    val low = bigIntInt32(this).toLong()
     return (high shl 32) or (low and 0xFFFFFFFFL)
 }
 
@@ -22,7 +21,15 @@ private fun bigIntShiftRight(
     b: JsAny,
 ) = js("a >> b")
 
-private fun bigIntLowBits(bigInt: JsAny): JsNumber = js("Number(bigInt) | 0")
+// Truncate in BigInt before converting: Number(bigInt) alone rounds values beyond 2^53.
+private fun bigIntInt32(bigInt: JsAny): JsNumber = js("Number(BigInt.asIntN(32, bigInt))")
+
+// `>>> 0` reads the low half as unsigned, so its sign bit doesn't spill into the high half.
+private fun composeBigInt(
+    high: JsNumber,
+    low: JsNumber,
+    shift: JsAny,
+): JsAny = js("(BigInt(high) << shift) | BigInt(low >>> 0)")
 
 @InternalPowerSyncAPI
 internal actual fun Uint8Array.asByteArray(): ByteArray {

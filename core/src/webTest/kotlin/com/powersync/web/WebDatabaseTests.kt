@@ -93,6 +93,37 @@ class WebDatabaseTests {
         }
 
     @Test
+    fun largeIntegers() =
+        runTest {
+            val db = WebConnectionFactory(this).open("largeIntegers.db", DatabaseImplementation.inMemoryShared)
+            // Bound longs beyond 32 bits go to the worker as BigInt. Results come back as plain JS
+            // numbers up to 2^53 (a millisecond timestamp is one) and as BigInt beyond that.
+            val values =
+                listOf(
+                    1_792_500_000_000L,
+                    -(1L shl 40) - 7,
+                    (1L shl 53) + 1,
+                    1234567890123456789L,
+                    Long.MAX_VALUE,
+                    Long.MIN_VALUE,
+                )
+            db.read { context ->
+                for (value in values) {
+                    context.usePreparedAsync("SELECT ?, ? = $value, $value") { stmt ->
+                        stmt.bindLong(1, value)
+                        stmt.bindLong(2, value)
+                        stmt.step() shouldBe true
+                        stmt.getLong(0) shouldBe value
+                        stmt.getLong(1) shouldBe 1L
+                        stmt.getLong(2) shouldBe value
+                        stmt.step() shouldBe false
+                    }
+                }
+            }
+            db.close()
+        }
+
+    @Test
     fun tableUpdates() =
         runTest {
             val factory = WebConnectionFactory(this)
